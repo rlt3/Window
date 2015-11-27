@@ -73,10 +73,37 @@ lua_window_gc (lua_State *L)
     return 0;
 }
 
+static int
+lua_set_color (lua_State *L)
+{
+    Window *window = lua_check_window(L, 1);
+    int r = luaL_checkint(L, 2);
+    int g = luaL_checkint(L, 3);
+    int b = luaL_checkint(L, 4);
+    int alpha = luaL_checkint(L, 5);
+    SDL_SetRenderDrawColor(window->renderer, r, g, b, alpha);
+    return 0;
+}
+
+static int
+lua_window_draw (lua_State *L)
+{
+    Window *window = lua_check_window(L, 1);
+    int x = luaL_checkint(L, 2);
+    int y = luaL_checkint(L, 3);
+    int w = luaL_checkint(L, 4);
+    int h = luaL_checkint(L, 5);
+    SDL_Rect r = { x, y, w, h };
+    SDL_RenderFillRect(window->renderer, &r); 
+    return 0;
+}
+
 static const luaL_Reg window_methods[] = {
-    {"clear",  lua_window_clear},
-    {"render", lua_window_render},
-    {"__gc",   lua_window_gc},
+    {"clear",     lua_window_clear},
+    {"draw",      lua_window_draw},
+    {"set_color", lua_set_color},
+    {"render",    lua_window_render},
+    {"__gc",      lua_window_gc},
     { NULL, NULL }
 };
 

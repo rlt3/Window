@@ -1,6 +1,6 @@
 UNAME := $(shell uname)
 CC=clang
-SOURCES=window.o
+SOURCES=src/window.o
 MODULE=Window.so
 
 ifeq ($(UNAME), Linux)
