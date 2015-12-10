@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "window.h"
 
 Window *
@@ -14,13 +15,14 @@ lua_window_new (lua_State *L)
 {
     int height = luaL_checkint(L, 1);
     int width = luaL_checkint(L, 2);
-    Window *window = lua_newuserdata(L, sizeof(*window));
 
+    Window *window = lua_newuserdata(L, sizeof(*window));
     luaL_getmetatable(L, WINDOW_LIB);
     lua_setmetatable(L, -2);
 
     window->height = height;
     window->width = width;
+    window->last_time = 0;
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_CreateWindowAndRenderer(width, height, 
@@ -98,11 +100,32 @@ lua_window_draw (lua_State *L)
     return 0;
 }
 
+/*
+ * if window:per_second(30) then do_stuff() end
+ *
+ * Is true up to N times per second. False otherwise.
+ */
+static int
+lua_window_per_second (lua_State *L)
+{
+    Window *window = lua_check_window(L, 1);
+    const int n_times = luaL_checkint(L, 2);
+    uint32_t current_time = SDL_GetTicks();
+
+    if (current_time - window->last_time > (1000/n_times))
+        lua_pushboolean(L, 1);
+    else
+        lua_pushboolean(L, 0);
+
+    return 1;
+}
+
 static const luaL_Reg window_methods[] = {
     {"clear",     lua_window_clear},
     {"draw",      lua_window_draw},
     {"set_color", lua_set_color},
     {"render",    lua_window_render},
+    {"per_second",lua_window_per_second},
     {"__gc",      lua_window_gc},
     { NULL, NULL }
 };
