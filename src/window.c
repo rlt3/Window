@@ -100,7 +100,134 @@ lua_window_draw (lua_State *L)
     return 0;
 }
 
+void
+window_push_event_motion (Window *window, lua_State *L)
+{
+    lua_newtable(L);
+
+    lua_pushinteger(L, window->event.motion.x);
+    lua_setfield(L, -2, "x");
+
+    lua_pushinteger(L, window->event.motion.y);
+    lua_setfield(L, -2, "y");
+}
+
 /*
+ * Push the key that was part of an event.
+ */
+void
+window_push_event_key (Window *window, lua_State *L) 
+{
+    switch(window->event.key.keysym.sym) {
+    case SDLK_ESCAPE: case SDL_QUIT:
+        lua_pushstring(L, "quit"); break; 
+    case SDLK_w:
+        lua_pushstring(L, "w"); break; 
+    case SDLK_a:
+        lua_pushstring(L, "a"); break; 
+    case SDLK_s:
+        lua_pushstring(L, "s"); break; 
+    case SDLK_d:
+        lua_pushstring(L, "d"); break; 
+    case SDLK_UP:
+        lua_pushstring(L, "up"); break; 
+    case SDLK_LEFT:
+        lua_pushstring(L, "left"); break;
+    case SDLK_DOWN:
+        lua_pushstring(L, "down"); break;
+    case SDLK_RIGHT:
+        lua_pushstring(L, "right"); break;
+    case SDLK_SPACE:
+        lua_pushstring(L, "space"); break;
+    default:
+      lua_pushstring(L, "unsupport key"); break;
+    }
+}
+
+/*
+ * Returns both the type of data and data itself. The data is a table which is
+ * dependent on the type of data.
+ *
+ * if window:has_event() then
+ *     e_type, e_data = window:get_event()
+ *
+ *     if e_type == "key_down"
+ *     elseif e_type == "key_up"
+ *     elseif e_type == "mouse_move"
+ *     elseif e_type == "mouse_click"
+ *     end
+ * end
+ */
+static int
+lua_window_get_event (lua_State *L)
+{
+    int no_event = 0;
+    Window *window = lua_check_window(L, 1);
+
+    if (SDL_PollEvent(&window->event)) {
+        switch (window->event.type) {
+        case SDL_KEYDOWN:
+            lua_pushstring(L, "key_down");
+            break;
+
+        case SDL_KEYUP:
+            lua_pushstring(L, "key_up");
+            break;
+
+        case SDL_MOUSEMOTION:
+            lua_pushstring(L, "mouse_move");
+            break;
+
+        case SDL_MOUSEBUTTONDOWN:
+            lua_pushstring(L, "mouse_click_down");
+            break;
+
+        case SDL_MOUSEBUTTONUP:
+            lua_pushstring(L, "mouse_click_up");
+            break;
+
+        default:
+            lua_pushstring(L, "not supported");
+            break;
+        }
+    } else {
+        lua_pushstring(L, "no event");
+        no_event = 1;
+    }
+    
+    lua_newtable(L);
+
+    if (no_event)
+        goto exit;
+
+    switch (window->event.type) {
+    case SDL_KEYDOWN:
+    case SDL_KEYUP:
+        window_push_event_key(window, L);
+        lua_setfield(L, -2, "key");
+        break;
+
+    case SDL_MOUSEMOTION:
+        window_push_event_motion(window, L);
+        lua_setfield(L, -2, "location");
+        break;
+
+    case SDL_MOUSEBUTTONDOWN:
+    case SDL_MOUSEBUTTONUP:
+        break;
+
+    default:
+        break;
+    }
+
+exit:
+    return 2;
+}
+
+/*
+ * TODO: Make this function accept a callback to be done every N times per
+ * second.
+ *
  * if window:per_second(30) then do_stuff() end
  *
  * Is true up to N times per second. False otherwise.
@@ -112,10 +239,12 @@ lua_window_per_second (lua_State *L)
     const int n_times = luaL_checkint(L, 2);
     uint32_t current_time = SDL_GetTicks();
 
-    if (current_time - window->last_time > (1000/n_times))
+    if (current_time - window->last_time > (1000/n_times)) {
+        window->last_time = current_time;
         lua_pushboolean(L, 1);
-    else
+    } else {
         lua_pushboolean(L, 0);
+    }
 
     return 1;
 }
@@ -126,6 +255,7 @@ static const luaL_Reg window_methods[] = {
     {"set_color", lua_set_color},
     {"render",    lua_window_render},
     {"per_second",lua_window_per_second},
+    {"get_event", lua_window_get_event},
     {"__gc",      lua_window_gc},
     { NULL, NULL }
 };
