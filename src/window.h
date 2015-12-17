@@ -8,7 +8,15 @@
 
 #define WINDOW_LIB "Window"
 
+struct RGBA {
+    int r;
+    int g;
+    int b;
+    int alpha;
+};
+
 typedef struct Window {
+    struct RGBA background;
     int height;
     int width;
     uint32_t last_time;

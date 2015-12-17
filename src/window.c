@@ -20,6 +20,7 @@ lua_window_new (lua_State *L)
     luaL_getmetatable(L, WINDOW_LIB);
     lua_setmetatable(L, -2);
 
+    window->background = (struct RGBA) { 0, 0, 0, 255 };
     window->height = height;
     window->width = width;
     window->last_time = 0;
@@ -33,19 +34,26 @@ lua_window_new (lua_State *L)
 }
 
 /*
- * Clears the window with the given color as a table in the form  {r, g, b, a}.
- * If no table is given, it assumes {0, 0, 0, 255}
+ * Clears the renderer, setting a solid background color. Defaults to 
+ * rbga(0, 0, 0, 255). This method can be called like `window:clear(r,g,b,a)'
+ * to set the new default.  This method can also be passed no arguments to clear 
+ * with the default.
  */
 static int
 lua_window_clear (lua_State *L)
 {
     Window *window = lua_check_window(L, 1);
-    int r = 0;
-    int g = 0;
-    int b = 0;
-    int alpha = 255;
+    struct RGBA bg = {
+        .r = luaL_optinteger(L, 2, window->background.r),
+        .g = luaL_optinteger(L, 3, window->background.g),
+        .b = luaL_optinteger(L, 4, window->background.b),
+        .alpha = luaL_optinteger(L, 5, window->background.alpha)
+    };
+
+    if (lua_gettop(L) == 5)
+        window->background = (struct RGBA) { bg.r, bg.g, bg.b, bg.alpha };
     
-    SDL_SetRenderDrawColor(window->renderer, r, g, b, alpha);
+    SDL_SetRenderDrawColor(window->renderer, bg.r, bg.g, bg.b, bg.alpha);
     SDL_RenderClear(window->renderer);
 
     return 0;
@@ -98,6 +106,14 @@ lua_window_draw (lua_State *L)
     SDL_Rect r = { x, y, w, h };
     SDL_RenderFillRect(window->renderer, &r); 
     return 0;
+}
+
+static int
+lua_window_error (lua_State *L)
+{
+    lua_check_window(L, 1);
+    lua_pushstring(L, SDL_GetError());
+    return 1;
 }
 
 void
@@ -256,6 +272,7 @@ static const luaL_Reg window_methods[] = {
     {"render",    lua_window_render},
     {"per_second",lua_window_per_second},
     {"get_event", lua_window_get_event},
+    {"error",     lua_window_error},
     {"__gc",      lua_window_gc},
     { NULL, NULL }
 };
