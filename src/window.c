@@ -24,6 +24,7 @@ lua_window_new (lua_State *L)
     window->height = height;
     window->width = width;
     window->last_time = 0;
+    window->is_done = 0;
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_CreateWindowAndRenderer(width, height, 
@@ -71,16 +72,30 @@ lua_window_render (lua_State *L)
 }
 
 /*
+ * Destroy the Window from a method.
+ */
+static int
+lua_window_quit (lua_State *L)
+{
+    Window *window = lua_check_window(L, 1);
+
+    if (!window->is_done) {
+        SDL_DestroyRenderer(window->renderer);
+        SDL_DestroyWindow(window->window);
+        SDL_Quit();
+        window->is_done = 1;
+    }
+
+    return 0;
+}
+
+/*
  * Destroy the Window on garbage collection.
  */
 static int
 lua_window_gc (lua_State *L)
 {
-    Window *window = lua_check_window(L, 1);
-    SDL_DestroyRenderer(window->renderer);
-    SDL_DestroyWindow(window->window);
-    SDL_Quit();
-    return 0;
+    return lua_window_quit(L);
 }
 
 static int
@@ -273,6 +288,7 @@ static const luaL_Reg window_methods[] = {
     {"per_second",lua_window_per_second},
     {"get_event", lua_window_get_event},
     {"error",     lua_window_error},
+    {"quit",      lua_window_quit},
     {"__gc",      lua_window_gc},
     { NULL, NULL }
 };

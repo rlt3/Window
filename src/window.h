@@ -20,6 +20,7 @@ typedef struct Window {
     int height;
     int width;
     uint32_t last_time;
+    int is_done;
     SDL_Renderer     *renderer;
     SDL_Window       *window;
     SDL_RendererInfo  renderer_info;
